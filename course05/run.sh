@@ -54,7 +54,7 @@ else
   SRC_OUTPUT='./output/'
   ITER=10
   THREADS=30
-  CORPUS=( "wiki8" "wiki9" "wiki7" )
+  CORPUS=( "text8" )
 fi
 
 ####

@@ -7,4 +7,4 @@ word2vec:
 	$(GC) -o word2vec word2vec.c $(OPS)
 
 clean:
-	rm distance word2vec
+	rm word2vec

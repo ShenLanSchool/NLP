@@ -1,0 +1,10 @@
+GC=g++
+OPS=-lm -lpthread
+
+build:  nnlm
+	mv nnlm ../../../bin/nnlm
+nnlm:
+	$(GC) -o nnlm nnlm.c $(OPS)
+
+clean:
+	rm nnlm nnlm
