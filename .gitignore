@@ -1,2 +1,4 @@
 .DS_Store
 course05/bin/
+course05/corpus/*
+course05/output/*
