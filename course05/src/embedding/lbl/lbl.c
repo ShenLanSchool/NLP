@@ -387,6 +387,8 @@ void writeWV(char *output_file){
     fclose(fo);
 }
 
+
+//注意在mac环境下这两个定义要注释掉
 typedef unsigned long uint64_t;
 typedef unsigned int uint32_t;
 
@@ -723,7 +725,7 @@ void *TrainModelThread(void *_id) {
   pthread_exit(NULL);
 }
 
-void writeFile(const char *name, double *A, long long size){
+void writeFile(const char *name, real *A, long long size){
   FILE *fout = fopen(name, "wb");
   fwrite(A, sizeof(real), size, fout);
   fclose(fout);

@@ -14,13 +14,12 @@ CUR_DATE=`date '+%Y:%m:%d %H:%M:%S'`
 
 echo "System: $(uname).  TimeStamp: "$CUR_DATE
 echo "Running word embeddings models and algorithms, included:"
-echo "  1.  fastText"
-echo "  2.  word2vec"
+echo "  1.  cw"
+echo "  2.  fastText"
 echo "  3.  glove"
-echo "  4.  nnlm"
-echo "  5.  cw"
-echo "  6.  lbl"
-echo "  7.  order"
+echo "  4.  lbl"
+echo "  5.  nnlm"
+echo "  6.  word2vec"
 
 ##
 # 预定义一些路径，包括但是不限于：
@@ -33,7 +32,7 @@ OS="$(uname)"
 LOCAL="Darwin"      #用于判断是本机测试环境，还是服务器的运行环境
 
 CUR_DATE=`date '+%Y%m%d_%H%M'`    #获取当前时间，为了后面统计程序的运行时间
-VECSIZE=( 50 )                    #词向量的维度，可以添加自己要训练的维度
+VECSIZE=( 100 200 )                    #词向量的维度，可以添加自己要训练的维度
 ITER=1                            #epoch的次数
 THREADS=1                         #并行的线程数目(双核4线程最高能开到4，在服务器上用htop看有多少个线程)
 
@@ -47,14 +46,14 @@ if [ $OS"X" = $LOCAL"X" ]
   SRC_OUTPUT='./output/'        #词向量的输出地址
   ITER=1                        #epoch的次数
   THREADS=4                     #本地线程数目
-  CORPUS=( "text8" )  #用于训练的不同语料
+  CORPUS=( "text8" )            #用于训练的不同语料
 else
   SRC_BIN='./bin/'
   SRC_CORPUS='/home/zhengyuanchun/data/corpus/'    #一般语料库在服务器上都是单独放置
   SRC_OUTPUT='./output/'
-  ITER=10
+  ITER=1                        #在服务器上epochs可以高点
   THREADS=30
-  CORPUS=( "text8" )
+  CORPUS=( "text8" )            #在服务器上可以添加自己收集的语料
 fi
 
 ####
@@ -62,9 +61,32 @@ fi
 # 然后再分别设置格子的参数，这样就能自动训练词向量了
 ####
 
-##
+
+################################################
+# 训练cw词向量的单独配置
+################################################
+SRC_CUR_OUTPUT=${SRC_OUTPUT}"/cw/"
+mkdir -p ${SRC_CUR_OUTPUT}
+SRC_CUR_BIN=${SRC_BIN}"cw/cw"
+CUR_DATE=`date '+%Y:%m:%d %H:%M:%S'`
+echo -e ${CUR_DATE}" Running \033[41;36;1m [word2vec] \033[0m model:"
+for _CORPUS in ${CORPUS[@]}; do
+  echo ${_CORPUS}
+  _SRC_CORPUS=$SRC_CORPUS${_CORPUS}
+  for _VECSIZE in ${VECSIZE[@]}; do
+    cmd="(time ${SRC_CUR_BIN} -train ${_SRC_CORPUS} -cbow 1 -debug 0\
+                    -hs 1 -negative 0 -iter ${ITER} -window 5\
+                    -size ${_VECSIZE} -threads ${THREADS} -sample 1e-4\
+                    -binary 0 -save-vocab ${SRC_CUR_OUTPUT}${_CORPUS}_vocab.txt \
+                    -output "${SRC_CUR_OUTPUT}"word2vec_"${_CORPUS}"_${_MODEL}_hs_size"${_VECSIZE}".vec)"
+    echo ${cmd}
+    eval ${cmd}
+  done
+done
+
+################################################
 # 训练word2vec的词向量的单独配置
-##
+################################################
 SRC_CUR_OUTPUT=${SRC_OUTPUT}"/word2vec/"          #盛放word2vec词向量的目录
 mkdir -p ${SRC_CUR_OUTPUT}
 SRC_CUR_BIN=${SRC_BIN}"word2vec/word2vec"         #可执行程序的名称是word2vec，已经make好了
@@ -102,14 +124,60 @@ for _CORPUS in ${CORPUS[@]}; do
         done
     done
 done
-##
-# 3. glove
-##
-# SRC_CUR_OUTPUT=${SRC_OUTPUT}"03_glove"
-# mkdir ${SRC_CUR_OUTPUT}
-# SRC_CUR_BIN=${SRC_BIN}"glove"
-# CUR_DATE=`date '+%Y:%m:%d %H:%M:%S'`
-# echo ${CUR_DATE}" Running [glove] model"
+
+
+################################################
+# 训练glove的词向量的单独配置(原始demo配置请看src/embeddings/glove中的demo.sh)
+################################################
+
+
+CORPUS=text8
+VOCAB_FILE=vocab.txt
+COOCCURRENCE_FILE=cooccurrence.bin
+COOCCURRENCE_SHUF_FILE=cooccurrence.shuf.bin
+BUILDDIR=build
+SAVE_FILE=vectors
+VERBOSE=2
+MEMORY=4.0
+VOCAB_MIN_COUNT=5
+VECTOR_SIZE=50
+MAX_ITER=15
+WINDOW_SIZE=15
+BINARY=2
+NUM_THREADS=8
+X_MAX=10
+
+for _CORPUS in ${CORPUS[@]}; do
+    echo ${_CORPUS}
+    _SRC_CORPUS=$SRC_CORPUS${_CORPUS}
+    $BUILDDIR/vocab_count -min-count $VOCAB_MIN_COUNT -verbose $VERBOSE < $CORPUS > $VOCAB_FILE
+    if [[ $? -eq 0 ]]
+      then
+      $BUILDDIR/cooccur -memory $MEMORY -vocab-file $VOCAB_FILE -verbose $VERBOSE -window-size $WINDOW_SIZE < $CORPUS > $COOCCURRENCE_FILE
+      if [[ $? -eq 0 ]]
+      then
+        $BUILDDIR/shuffle -memory $MEMORY -verbose $VERBOSE < $COOCCURRENCE_FILE > $COOCCURRENCE_SHUF_FILE
+        if [[ $? -eq 0 ]]
+        then
+           $BUILDDIR/glove -save-file $SAVE_FILE -threads $NUM_THREADS -input-file $COOCCURRENCE_SHUF_FILE -x-max $X_MAX -iter $MAX_ITER -vector-size $VECTOR_SIZE -binary $BINARY -vocab-file $VOCAB_FILE -verbose $VERBOSE
+           if [[ $? -eq 0 ]]
+           then
+               if [ "$1" = 'matlab' ]; then
+                   matlab -nodisplay -nodesktop -nojvm -nosplash < ./eval/matlab/read_and_evaluate.m 1>&2
+               elif [ "$1" = 'octave' ]; then
+                   octave < ./eval/octave/read_and_evaluate_octave.m 1>&2
+               else
+                   python eval/python/evaluate.py
+               fi
+           fi
+        fi
+      fi
+    fi
+done
+
+
+
+
 
 ##
 # 1. fastText

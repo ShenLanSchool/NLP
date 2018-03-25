@@ -1,0 +1,9 @@
+GC=g++
+OPS=-lm -lpthread
+
+build:  cw
+cw:
+	$(GC) -o cw cw.c $(OPS)
+
+clean:
+	rm cw

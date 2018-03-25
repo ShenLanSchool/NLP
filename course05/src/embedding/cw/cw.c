@@ -388,6 +388,7 @@ void writeWV(char *output_file){
     fclose(fo);
 }
 
+//注意在mac环境下这两个定义要注释掉
 typedef unsigned long uint64_t;
 typedef unsigned int uint32_t;
 
