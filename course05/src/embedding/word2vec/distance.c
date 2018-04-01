@@ -16,6 +16,8 @@
 #include <string.h>
 #include <math.h>
 #include <malloc.h>
+// mac下的malloc库地址
+//#include <sys/malloc.h>
 
 const long long max_size = 2000;         // max length of strings
 const long long N = 40;                  // number of closest words that will be shown

@@ -32,7 +32,7 @@ OS="$(uname)"
 LOCAL="Darwin"      #用于判断是本机测试环境，还是服务器的运行环境
 
 CUR_DATE=`date '+%Y%m%d_%H%M'`    #获取当前时间，为了后面统计程序的运行时间
-VECSIZE=( 100 200 )                    #词向量的维度，可以添加自己要训练的维度
+VECSIZE=( 50 300 )                    #词向量的维度，可以添加自己要训练的维度
 ITER=1                            #epoch的次数
 THREADS=1                         #并行的线程数目(双核4线程最高能开到4，在服务器上用htop看有多少个线程)
 
@@ -53,7 +53,7 @@ else
   SRC_OUTPUT='./output/'
   ITER=1                        #在服务器上epochs可以高点
   THREADS=30
-  CORPUS=( "text8" )            #在服务器上可以添加自己收集的语料
+  CORPUS=( "text8" "travel" )            #在服务器上可以添加自己收集的语料
 fi
 
 ####
@@ -160,11 +160,7 @@ for _CORPUS in ${CORPUS[@]}; do
             echo ${cmd}
             eval ${cmd}
             # 03.softmax
-            cmd="(time ${SRC_CUR_BIN} ${_MODEL} -input ${_SRC_CORPUS} -lr 0.025 -dim ${_VECSIZE}  \
-                            -ws 5 -epoch ${ITER} -minCount 5  -loss softmax -neg 0 -thread ${THREADS} -t 1e-4 -verbose 0 \
-                            -output "${SRC_CUR_OUTPUT}"fastText_"${_CORPUS}"_${_MODEL}_softmax_size"${_VECSIZE}")"
-            echo ${cmd}
-            eval ${cmd}
+
         done
     done
 done
