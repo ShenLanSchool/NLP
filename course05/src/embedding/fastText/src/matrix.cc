@@ -16,30 +16,36 @@
 #include "utils.h"
 #include "vector.h"
 
-namespace fasttext {
+namespace fasttext
+{
 
-Matrix::Matrix() {
+Matrix::Matrix()
+{
   m_ = 0;
   n_ = 0;
   data_ = nullptr;
 }
 
-Matrix::Matrix(int64_t m, int64_t n) {
+Matrix::Matrix(int64_t m, int64_t n)
+{
   m_ = m;
   n_ = n;
   data_ = new real[m * n];
 }
 
-Matrix::Matrix(const Matrix& other) {
+Matrix::Matrix(const Matrix &other)
+{
   m_ = other.m_;
   n_ = other.n_;
   data_ = new real[m_ * n_];
-  for (int64_t i = 0; i < (m_ * n_); i++) {
+  for (int64_t i = 0; i < (m_ * n_); i++)
+  {
     data_[i] = other.data_[i];
   }
 }
 
-Matrix& Matrix::operator=(const Matrix& other) {
+Matrix &Matrix::operator=(const Matrix &other)
+{
   Matrix temp(other);
   m_ = temp.m_;
   n_ = temp.n_;
@@ -47,56 +53,66 @@ Matrix& Matrix::operator=(const Matrix& other) {
   return *this;
 }
 
-Matrix::~Matrix() {
+Matrix::~Matrix()
+{
   delete[] data_;
 }
 
-void Matrix::zero() {
-  for (int64_t i = 0; i < (m_ * n_); i++) {
-      data_[i] = 0.0;
+void Matrix::zero()
+{
+  for (int64_t i = 0; i < (m_ * n_); i++)
+  {
+    data_[i] = 0.0;
   }
 }
 
-void Matrix::uniform(real a) {
+void Matrix::uniform(real a)
+{
   std::minstd_rand rng(1);
   std::uniform_real_distribution<> uniform(-a, a);
-  for (int64_t i = 0; i < (m_ * n_); i++) {
+  for (int64_t i = 0; i < (m_ * n_); i++)
+  {
     data_[i] = uniform(rng);
   }
 }
 
-void Matrix::addRow(const Vector& vec, int64_t i, real a) {
+void Matrix::addRow(const Vector &vec, int64_t i, real a)
+{
   assert(i >= 0);
   assert(i < m_);
   assert(vec.m_ == n_);
-  for (int64_t j = 0; j < n_; j++) {
+  for (int64_t j = 0; j < n_; j++)
+  {
     data_[i * n_ + j] += a * vec.data_[j];
   }
 }
 
-real Matrix::dotRow(const Vector& vec, int64_t i) {
+real Matrix::dotRow(const Vector &vec, int64_t i)
+{
   assert(i >= 0);
   assert(i < m_);
   assert(vec.m_ == n_);
   real d = 0.0;
-  for (int64_t j = 0; j < n_; j++) {
+  for (int64_t j = 0; j < n_; j++)
+  {
     d += data_[i * n_ + j] * vec.data_[j];
   }
   return d;
 }
 
-void Matrix::save(std::ostream& out) {
-  out.write((char*) &m_, sizeof(int64_t));
-  out.write((char*) &n_, sizeof(int64_t));
-  out.write((char*) data_, m_ * n_ * sizeof(real));
+void Matrix::save(std::ostream &out)
+{
+  out.write((char *)&m_, sizeof(int64_t));
+  out.write((char *)&n_, sizeof(int64_t));
+  out.write((char *)data_, m_ * n_ * sizeof(real));
 }
 
-void Matrix::load(std::istream& in) {
-  in.read((char*) &m_, sizeof(int64_t));
-  in.read((char*) &n_, sizeof(int64_t));
+void Matrix::load(std::istream &in)
+{
+  in.read((char *)&m_, sizeof(int64_t));
+  in.read((char *)&n_, sizeof(int64_t));
   delete[] data_;
   data_ = new real[m_ * n_];
-  in.read((char*) data_, m_ * n_ * sizeof(real));
+  in.read((char *)data_, m_ * n_ * sizeof(real));
 }
-
 }

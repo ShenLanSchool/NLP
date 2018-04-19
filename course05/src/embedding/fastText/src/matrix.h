@@ -16,32 +16,33 @@
 
 #include "real.h"
 
-namespace fasttext {
+namespace fasttext
+{
 
 class Vector;
 
-class Matrix {
+class Matrix
+{
 
-  public:
-    real* data_;
-    int64_t m_;
-    int64_t n_;
+public:
+  real *data_;
+  int64_t m_;
+  int64_t n_;
 
-    Matrix();
-    Matrix(int64_t, int64_t);
-    Matrix(const Matrix&);
-    Matrix& operator=(const Matrix&);
-    ~Matrix();
+  Matrix();
+  Matrix(int64_t, int64_t);
+  Matrix(const Matrix &);
+  Matrix &operator=(const Matrix &);
+  ~Matrix();
 
-    void zero();
-    void uniform(real);
-    real dotRow(const Vector&, int64_t);
-    void addRow(const Vector&, int64_t, real);
+  void zero();
+  void uniform(real);
+  real dotRow(const Vector &, int64_t);
+  void addRow(const Vector &, int64_t, real);
 
-    void save(std::ostream&);
-    void load(std::istream&);
+  void save(std::ostream &);
+  void load(std::istream &);
 };
-
 }
 
 #endif

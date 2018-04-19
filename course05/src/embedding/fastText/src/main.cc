@@ -13,72 +13,100 @@
 #include "args.h"
 
 using namespace fasttext;
-
-void printUsage() {
+/**
+ * 打印基础帮助选项 
+ *  supervised: 有监督的分类器
+ *  test      : 测试有监督的分类器
+ *  predict   : 预测最大概率类别
+ *  predict-prob: 预测最大概率类别并给出概率
+ *  skip-gram : 训练一个skip-gram模型
+ *  cbow      : 训练一个CBOW模型
+ *  print-vector: 打印出给定模型的向量
+ */
+void printUsage()
+{
   std::cout
-    << "usage: fasttext <command> <args>\n\n"
-    << "The commands supported by fasttext are:\n\n"
-    << "  supervised          train a supervised classifier\n"
-    << "  test                evaluate a supervised classifier\n"
-    << "  predict             predict most likely labels\n"
-    << "  predict-prob        predict most likely labels with probabilities\n"
-    << "  skipgram            train a skipgram model\n"
-    << "  cbow                train a cbow model\n"
-    << "  print-vectors       print vectors given a trained model\n"
-    << std::endl;
+      << "usage: fasttext <command> <args>\n\n"
+      << "The commands supported by fasttext are:\n\n"
+      << "  supervised          train a supervised classifier\n"
+      << "  test                evaluate a supervised classifier\n"
+      << "  predict             predict most likely labels\n"
+      << "  predict-prob        predict most likely labels with probabilities\n"
+      << "  skipgram            train a skipgram model\n"
+      << "  cbow                train a cbow model\n"
+      << "  print-vectors       print vectors given a trained model\n"
+      << std::endl;
+}
+// <! 下面的这些print 函数都是上面的Usage函数的二级帮助菜单
+
+/**
+ * 
+ */
+void printTestUsage()
+{
+  std::cout
+      << "usage: fasttext test <model> <test-data> [<k>]\n\n"
+      << "  <model>      model filename\n"
+      << "  <test-data>  test data filename (if -, read from stdin)\n"
+      << "  <k>          (optional; 1 by default) predict top k labels\n"
+      << std::endl;
 }
 
-void printTestUsage() {
+void printPredictUsage()
+{
   std::cout
-    << "usage: fasttext test <model> <test-data> [<k>]\n\n"
-    << "  <model>      model filename\n"
-    << "  <test-data>  test data filename (if -, read from stdin)\n"
-    << "  <k>          (optional; 1 by default) predict top k labels\n"
-    << std::endl;
+      << "usage: fasttext predict[-prob] <model> <test-data> [<k>]\n\n"
+      << "  <model>      model filename\n"
+      << "  <test-data>  test data filename (if -, read from stdin)\n"
+      << "  <k>          (optional; 1 by default) predict top k labels\n"
+      << std::endl;
 }
 
-void printPredictUsage() {
+void printPrintVectorsUsage()
+{
   std::cout
-    << "usage: fasttext predict[-prob] <model> <test-data> [<k>]\n\n"
-    << "  <model>      model filename\n"
-    << "  <test-data>  test data filename (if -, read from stdin)\n"
-    << "  <k>          (optional; 1 by default) predict top k labels\n"
-    << std::endl;
+      << "usage: fasttext print-vectors <model>\n\n"
+      << "  <model>      model filename\n"
+      << std::endl;
 }
 
-void printPrintVectorsUsage() {
+void printPrintNgramsUsage()
+{
   std::cout
-    << "usage: fasttext print-vectors <model>\n\n"
-    << "  <model>      model filename\n"
-    << std::endl;
+      << "usage: fasttext print-ngrams <model> <word>\n\n"
+      << "  <model>      model filename\n"
+      << "  <word>       word to print\n"
+      << std::endl;
 }
 
-void printPrintNgramsUsage() {
-  std::cout
-    << "usage: fasttext print-ngrams <model> <word>\n\n"
-    << "  <model>      model filename\n"
-    << "  <word>       word to print\n"
-    << std::endl;
-}
-
-void test(int argc, char** argv) {
+void test(int argc, char **argv)
+{
   int32_t k;
-  if (argc == 4) {
+  if (argc == 4)
+  {
     k = 1;
-  } else if (argc == 5) {
+  }
+  else if (argc == 5)
+  {
     k = atoi(argv[4]);
-  } else {
+  }
+  else
+  {
     printTestUsage();
     exit(EXIT_FAILURE);
   }
   FastText fasttext;
   fasttext.loadModel(std::string(argv[2]));
   std::string infile(argv[3]);
-  if (infile == "-") {
+  if (infile == "-")
+  {
     fasttext.test(std::cin, k);
-  } else {
+  }
+  else
+  {
     std::ifstream ifs(infile);
-    if (!ifs.is_open()) {
+    if (!ifs.is_open())
+    {
       std::cerr << "Test file cannot be opened!" << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -88,13 +116,19 @@ void test(int argc, char** argv) {
   exit(0);
 }
 
-void predict(int argc, char** argv) {
+void predict(int argc, char **argv)
+{
   int32_t k;
-  if (argc == 4) {
+  if (argc == 4)
+  {
     k = 1;
-  } else if (argc == 5) {
+  }
+  else if (argc == 5)
+  {
     k = atoi(argv[4]);
-  } else {
+  }
+  else
+  {
     printPredictUsage();
     exit(EXIT_FAILURE);
   }
@@ -103,11 +137,15 @@ void predict(int argc, char** argv) {
   fasttext.loadModel(std::string(argv[2]));
 
   std::string infile(argv[3]);
-  if (infile == "-") {
+  if (infile == "-")
+  {
     fasttext.predict(std::cin, k, print_prob);
-  } else {
+  }
+  else
+  {
     std::ifstream ifs(infile);
-    if (!ifs.is_open()) {
+    if (!ifs.is_open())
+    {
       std::cerr << "Input file cannot be opened!" << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -118,8 +156,10 @@ void predict(int argc, char** argv) {
   exit(0);
 }
 
-void printVectors(int argc, char** argv) {
-  if (argc != 3) {
+void printVectors(int argc, char **argv)
+{
+  if (argc != 3)
+  {
     printPrintVectorsUsage();
     exit(EXIT_FAILURE);
   }
@@ -129,8 +169,10 @@ void printVectors(int argc, char** argv) {
   exit(0);
 }
 
-void printNgrams(int argc, char** argv) {
-  if (argc != 4) {
+void printNgrams(int argc, char **argv)
+{
+  if (argc != 4)
+  {
     printPrintNgramsUsage();
     exit(EXIT_FAILURE);
   }
@@ -140,30 +182,44 @@ void printNgrams(int argc, char** argv) {
   exit(0);
 }
 
-void train(int argc, char** argv) {
+void train(int argc, char **argv)
+{
   std::shared_ptr<Args> a = std::make_shared<Args>();
   a->parseArgs(argc, argv);
   FastText fasttext;
   fasttext.train(a);
 }
 
-int main(int argc, char** argv) {
-  if (argc < 2) {
+int main(int argc, char **argv)
+{
+  if (argc < 2)
+  {
     printUsage();
     exit(EXIT_FAILURE);
   }
   std::string command(argv[1]);
-  if (command == "skipgram" || command == "cbow" || command == "supervised") {
+  if (command == "skipgram" || command == "cbow" || command == "supervised")
+  {
     train(argc, argv);
-  } else if (command == "test") {
+  }
+  else if (command == "test")
+  {
     test(argc, argv);
-  } else if (command == "print-vectors") {
+  }
+  else if (command == "print-vectors")
+  {
     printVectors(argc, argv);
-  } else if (command == "print-ngrams") {
+  }
+  else if (command == "print-ngrams")
+  {
     printNgrams(argc, argv);
-  } else if (command == "predict" || command == "predict-prob" ) {
+  }
+  else if (command == "predict" || command == "predict-prob")
+  {
     predict(argc, argv);
-  } else {
+  }
+  else
+  {
     printUsage();
     exit(EXIT_FAILURE);
   }
