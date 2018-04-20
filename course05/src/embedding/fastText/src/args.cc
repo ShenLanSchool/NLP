@@ -40,7 +40,10 @@ Args::Args()
   pretrainedVectors = "";
   saveOutput = 0;
 }
-
+/**
+ * 解析命令行参数
+ * 命令行参数的格式为 fastText cbow -arg1 val1 -arg2 val2
+ */
 void Args::parseArgs(int argc, char **argv)
 {
   std::string command(argv[1]);
@@ -58,6 +61,7 @@ void Args::parseArgs(int argc, char **argv)
     model = model_name::cbow;
   }
   int ai = 2;
+  // 将所有的命令行参数都过一遍，如果发现有不合格的参数或是参数的值不合格，输出printHelp()
   while (ai < argc)
   {
     if (argv[ai][0] != '-')
@@ -227,7 +231,7 @@ void Args::printHelp()
       << "  -t                  sampling threshold [" << t << "]\n"
       << "  -label              labels prefix [" << label << "]\n"
       << "  -verbose            verbosity level [" << verbose << "]\n"
-      << "  -pretrainedVectors  pretrained word vectors for supervised learning []"
+      << "  -pretrainedVectors  pretrained word vectors for supervised learning [" << pretrainedVectors <<"]\n"
       << "  -saveOutput         whether output params should be saved [" << saveOutput << "]\n"
       << std::endl;
 }

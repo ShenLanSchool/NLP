@@ -39,8 +39,8 @@ struct Node
 class Model
 {
 private:
-  std::shared_ptr<Matrix> wi_;
-  std::shared_ptr<Matrix> wo_;
+  std::shared_ptr<Matrix> wi_;    // 输入矩阵，对应着每一个单词的词向量
+  std::shared_ptr<Matrix> wo_;    // 参数矩阵，对应着输出层的每一个二分类器的参数
   std::shared_ptr<Args> args_;
   Vector hidden_;
   Vector output_;

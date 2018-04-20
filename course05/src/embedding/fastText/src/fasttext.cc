@@ -145,6 +145,8 @@ void FastText::supervised(Model &model, real lr,
 {
   if (labels.size() == 0 || line.size() == 0)
     return;
+  // 这里随机的选取了多标签分类中的一个标签作为label来更新模型
+  // 所以fastText并不适合进行多标签问题的分类
   std::uniform_int_distribution<> uniform(0, labels.size() - 1);
   int32_t i = uniform(model.rng);
   model.update(line, labels[i], lr);
@@ -155,10 +157,13 @@ void FastText::cbow(Model &model, real lr,
 {
   std::vector<int32_t> bow;
   std::uniform_int_distribution<> uniform(1, args_->ws);
+  // 窗口在句子上从左到右滑动，所以每滑动一个单词模型更新一次
   for (int32_t w = 0; w < line.size(); w++)
   {
+    // 上下文窗口是随机的 [1, windowsize]
     int32_t boundary = uniform(model.rng);
     bow.clear();
+    // bow装的就是上下文单词
     for (int32_t c = -boundary; c <= boundary; c++)
     {
       if (c != 0 && w + c >= 0 && w + c < line.size())
@@ -175,6 +180,7 @@ void FastText::skipgram(Model &model, real lr,
                         const std::vector<int32_t> &line)
 {
   std::uniform_int_distribution<> uniform(1, args_->ws);
+  // 目标词换成了词的Ngrams，然后每构造一个[target,contextword]的样本就进行一次更新
   for (int32_t w = 0; w < line.size(); w++)
   {
     int32_t boundary = uniform(model.rng);
@@ -327,9 +333,18 @@ void FastText::printVectors()
   }
 }
 
+/**
+ * 训练的线程函数，主要的训练过程。
+ * 调用了不同任务的参数更新策略(所谓训练，就是参数的更新过程，这里将训练抽象成了参数的更新过程)
+ * 多线程的训练当中每个线程并没有加锁，所以会给参数的更新带来了一些噪音，但是不会影响最终的结果
+ * 模型的更新策略实际发生在 supervised、cbow、skipgram三个函数当中，这3个函数都同时调用同一个
+ * model.update() 函数来更新参数
+ */
 void FastText::trainThread(int32_t threadId)
 {
   std::ifstream ifs(args_->input);
+  // 将训练文件均分成thread份，然后通过threadId寻找到相应的部分
+  // 将文件指针移动到那个相应的地方
   utils::seek(ifs, threadId * utils::size(ifs) / args_->thread);
 
   Model model(input_, output_, args_, threadId);
@@ -341,15 +356,23 @@ void FastText::trainThread(int32_t threadId)
   {
     model.setTargetCounts(dict_->getCounts(entry_type::word));
   }
-
+  // 训练文件中的token总数目
   const int64_t ntokens = dict_->ntokens();
+  // 当前线程处理的token总数目
   int64_t localTokenCount = 0;
   std::vector<int32_t> line, labels;
+  // tokenCount为所有线程处理完毕之后的token总数目
   while (tokenCount < args_->epoch * ntokens)
   {
+    // 当前处理进度，用于显示处理过程
     real progress = real(tokenCount) / (args_->epoch * ntokens);
+    // 学习率根据处理过程线性减小
     real lr = args_->lr * (1.0 - progress);
     localTokenCount += dict_->getLine(ifs, line, labels, model.rng);
+    // 根据命令行的配置不同，模型参数的更新策略也是不同的，分为以下3个不同的策略：
+    // 1. 有监督学习（分类任务）
+    // 2. word2vec （CBOW)
+    // 3. word2vec （SKIPGRAM)
     if (args_->model == model_name::sup)
     {
       dict_->addNgrams(line, args_->wordNgrams);
@@ -363,16 +386,20 @@ void FastText::trainThread(int32_t threadId)
     {
       skipgram(model, lr, line);
     }
+    // lrUpdateRate(default 100) 每个线程学习率的变化率 
+    // localTokenCount 影响 tokenCount 影响 progress 影响 lr
     if (localTokenCount > args_->lrUpdateRate)
     {
       tokenCount += localTokenCount;
       localTokenCount = 0;
+      // 如果是第一个线程的话，那么第一个线程负责打印消息，其它线程不用打印
       if (threadId == 0 && args_->verbose > 1)
       {
         printInfo(progress, model.getLoss());
       }
     }
   }
+  // 训练完毕的时候，输出总计信息
   if (threadId == 0 && args_->verbose > 0)
   {
     printInfo(1.0, model.getLoss());
@@ -445,19 +472,24 @@ void FastText::train(std::shared_ptr<Args> args)
     std::cerr << "Input file cannot be opened!" << std::endl;
     exit(EXIT_FAILURE);
   }
+  // 根据输入语料库文件初始化词典
   dict_->readFromFile(ifs);
   ifs.close();
-
+  // 如果是在命令行中指定了有已经预先训练好的词向量，
+  // 那么加载这些词向量，否则自己申请内存从头开始训练
   if (args_->pretrainedVectors.size() != 0)
   {
     loadVectors(args_->pretrainedVectors);
   }
   else
   {
+    // 初始化输入层，对于普通的word2vec，输入层就是一个词向量的查找表，大小为[nwords,dim]
+    // fastText又添加了n-gram，所以输出矩阵的大小为 [nwords+ngram, dim]
+    // 在代码中，所有n-gram 都被hash到固定数目的bucket中，所以输出矩阵的大小为 [nwords+bucket, dim]
     input_ = std::make_shared<Matrix>(dict_->nwords() + args_->bucket, args_->dim);
     input_->uniform(1.0 / args_->dim);
   }
-
+  // 如果是监督学习分类的话，输出层对应的是label的个数，如果训练词向量的话，输出层对应词典的大小
   if (args_->model == model_name::sup)
   {
     output_ = std::make_shared<Matrix>(dict_->nlabels(), args_->dim);
@@ -481,7 +513,7 @@ void FastText::train(std::shared_ptr<Args> args)
   }
   model_ = std::make_shared<Model>(input_, output_, args_, 0);
 
-  //saveModel();
+  saveModel();
   if (args_->model != model_name::sup)
   {
     saveVectors();

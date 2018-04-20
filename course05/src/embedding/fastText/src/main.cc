@@ -198,6 +198,7 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
   std::string command(argv[1]);
+  // 如果第一个命令是skipgram cbow supervised 的话，那么就运用train来完成相应的分类学习或是词向量训练
   if (command == "skipgram" || command == "cbow" || command == "supervised")
   {
     train(argc, argv);

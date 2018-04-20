@@ -20,23 +20,35 @@ normalize_text() {
 }
 
 RESULTDIR=result
-DATADIR=data
+DATADIR=/home/zhengyuanchun/data/corpus
 
 mkdir -p "${RESULTDIR}"
 mkdir -p "${DATADIR}"
 
 if [ ! -f "${DATADIR}/dbpedia.train" ]
 then
-  wget -c "https://github.com/le-scientifique/torchDatasets/raw/master/dbpedia_csv.tar.gz" -O "${DATADIR}/dbpedia_csv.tar.gz"
-  tar -xzvf "${DATADIR}/dbpedia_csv.tar.gz" -C "${DATADIR}"
-  cat "${DATADIR}/dbpedia_csv/train.csv" | normalize_text > "${DATADIR}/dbpedia.train"
-  cat "${DATADIR}/dbpedia_csv/test.csv" | normalize_text > "${DATADIR}/dbpedia.test"
+  if [ ! -f "${DATADIR}/dbpedia_csv.tar.gz" ]
+  then
+    wget -c "https://github.com/le-scientifique/torchDatasets/raw/master/dbpedia_csv.tar.gz" -O "${DATADIR}/dbpedia_csv.tar.gz"
+  fi
+  if [ ! -f "${DATADIR}/dbpedia_csv/train.csv" ]
+  then
+    tar -xzvf "${DATADIR}/dbpedia_csv.tar.gz" -C "${DATADIR}"
+  fi
+  if [ ! -f "${DATADIR}/dbpedia.train" ]
+  then
+    cat "${DATADIR}/dbpedia_csv/train.csv" | normalize_text > "${DATADIR}/dbpedia.train"
+    cat "${DATADIR}/dbpedia_csv/test.csv" | normalize_text > "${DATADIR}/dbpedia.test"
+  fi
 fi
 
-make
+make -f makefile2
 
-./fasttext supervised -input "${DATADIR}/dbpedia.train" -output "${RESULTDIR}/dbpedia" -dim 10 -lr 0.1 -wordNgrams 2 -minCount 1 -bucket 10000000 -epoch 5 -thread 4
+echo "begin training..."
+./fasttext supervised -input "${DATADIR}/dbpedia.train" -output "${RESULTDIR}/dbpedia" -dim 100 -lr 0.1 -wordNgrams 2 -minCount 1 -bucket 10000000 -epoch 5 -thread 20
 
+echo "begin testing..."
 ./fasttext test "${RESULTDIR}/dbpedia.bin" "${DATADIR}/dbpedia.test"
 
+echo "begin predicting..."
 ./fasttext predict "${RESULTDIR}/dbpedia.bin" "${DATADIR}/dbpedia.test" > "${RESULTDIR}/dbpedia.test.predict"

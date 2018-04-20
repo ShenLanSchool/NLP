@@ -41,12 +41,18 @@ Model::~Model()
   delete[] t_log;
 }
 
+/**
+ * Model将hierarchical softmax 和Negative sampling统一抽象成多个二元logistic regression 的连乘
+ */
 real Model::binaryLogistic(int32_t target, bool label, real lr)
 {
+  // 将hidden_和参数矩阵的第target 行做内积，计算sigmoid
   real score = sigmoid(wo_->dotRow(hidden_, target));
   real alpha = lr * (real(label) - score);
   grad_.addRow(*wo_, target, alpha);
+  // 每一个二分类器的参数是及时更新的，词向量wi_是在走过所有的二分类器之后才更新的
   wo_->addRow(hidden_, target, alpha);
+  // 在负采样的时候，正负样本返回的loss是不一样的
   if (label)
   {
     return -log(score);
@@ -56,11 +62,15 @@ real Model::binaryLogistic(int32_t target, bool label, real lr)
     return -log(1.0 - score);
   }
 }
-
+/**
+ * 这里每一个更新方法都是在构造输出层的结构
+ * 然后调用一连串的二分类器，将误差累计
+ */ 
 real Model::negativeSampling(int32_t target, real lr)
 {
   real loss = 0.0;
   grad_.zero();
+  // 构造一个正样本，然后构造neg个负样本，label就是样本的label
   for (int32_t n = 0; n <= args_->neg; n++)
   {
     if (n == 0)
@@ -74,13 +84,17 @@ real Model::negativeSampling(int32_t target, real lr)
   }
   return loss;
 }
-
+/**
+ * 这里每一个更新方法都是在构造输出层的结构
+ * 然后调用一连串的二分类器，将误差累计
+ */
 real Model::hierarchicalSoftmax(int32_t target, real lr)
 {
   real loss = 0.0;
   grad_.zero();
   const std::vector<bool> &binaryCode = codes[target];
   const std::vector<int32_t> &pathToRoot = paths[target];
+  // 目标单词的huffman编码就是每一个二分类器的label
   for (int32_t i = 0; i < pathToRoot.size(); i++)
   {
     loss += binaryLogistic(pathToRoot[i], binaryCode[i], lr);
@@ -143,6 +157,11 @@ bool Model::comparePairs(const std::pair<real, int32_t> &l,
   return l.first > r.first;
 }
 
+/**
+ * 用于给输入数据打上1~K个类标签，并且输出各个类对应的概率值。
+ * 对于Hierarchical softmax，需要遍历huafman 树才能找到top-k的结果
+ * 对于普通的softmax（包括负采样和softmax的输出）需要遍历结果数组，找到top-k
+ */ 
 void Model::predict(const std::vector<int32_t> &input, int32_t k,
                     std::vector<std::pair<real, int32_t>> &heap,
                     Vector &hidden, Vector &output) const
@@ -212,14 +231,24 @@ void Model::dfs(int32_t k, int32_t node, real score,
   dfs(k, tree[node].left, score + log(1.0 - f), heap, hidden);
   dfs(k, tree[node].right, score + log(f), heap, hidden);
 }
-
+/**
+ * 模型更新参数
+ * input  :数组。其中每一个元素是dict里的ID。分类问题代表输入的文本，word2vec代表词的上下文
+ * target :标签。分类问题就是类的标签，word2vec就是预测词的ID
+ * lr     :参数的跟新速率
+ */ 
 void Model::update(const std::vector<int32_t> &input, int32_t target, real lr)
 {
   assert(target >= 0);
   assert(target < osz_);
   if (input.size() == 0)
     return;
+  // 输入层 -> 隐藏层 （只是将输入层的输入加权平均了）
   computeHidden(input, hidden_);
+  // 根据输出层的不同，调用不同的求解函数
+  // 1. Negative Sampling
+  // 2. Hierarchical Softmax
+  // 3. Softmax
   if (args_->loss == loss_name::ns)
   {
     loss_ += negativeSampling(target, lr);
@@ -232,12 +261,15 @@ void Model::update(const std::vector<int32_t> &input, int32_t target, real lr)
   {
     loss_ += softmax(target, lr);
   }
+  // 样本数目加1
   nexamples_ += 1;
 
   if (args_->model == model_name::sup)
   {
     grad_.mul(1.0 / input.size());
   }
+  // 词向量是在走完了输出层所有的二分类器之后才更新参数的
+  // 输出层每一个二分类的参数是在上面调用的不同的求解函数的时候及时更新的
   for (auto it = input.cbegin(); it != input.cend(); ++it)
   {
     wi_->addRow(grad_, *it, 1.0);
